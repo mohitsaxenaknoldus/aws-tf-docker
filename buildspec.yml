@@ -1,25 +1,24 @@
 version: 0.2
 
 phases:
+  install:
+    runtime-versions:
+      docker: 19
+
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       - echo $CODEBUILD_RESOLVED_SOURCE_VERSION > /tmp/version.txt
-      - LOGIN_COMMAND=$(aws ecr get-login-password --region $AWS_DEFAULT_REGION)
-      - docker login -u AWS -p $LOGIN_COMMAND $ECR_REGISTRY_URL
+      - LOGIN_COMMAND=$(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+      - eval $LOGIN_COMMAND
+
   build:
     commands:
       - echo Building the Docker image...
-      - docker build -t $ECR_REGISTRY_URL:latest application/nextjs-blog/
+      - cd nextjs-docker && docker build -t $ECR_REGISTRY_URL:latest .
 
   post_build:
     commands:
       - echo Pushing the Docker image to Amazon ECR...
       - docker push $ECR_REGISTRY_URL:latest
-      - |
-        # Extract ECS service name and cluster name from your existing ECS service ARN
-        ECS_SERVICE_NAME="my-service"
-        ECS_CLUSTER_NAME="my-cluster"
-        
-        # Update the ECS service with the latest task definition revision
-        aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --force-new-deployment
+
